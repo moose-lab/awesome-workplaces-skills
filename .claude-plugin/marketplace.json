@@ -1,0 +1,11 @@
+{
+  "name": "awesome-workplaces-skills",
+  "version": "1.0.0",
+  "description": "A curated collection of Claude Code skills for common product development workflows",
+  "plugins": [
+    {
+      "name": "gmail-waitlist",
+      "source": "./gmail-waitlist"
+    }
+  ]
+}

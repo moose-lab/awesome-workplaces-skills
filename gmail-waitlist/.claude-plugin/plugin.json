@@ -1,0 +1,6 @@
+{
+  "name": "gmail-waitlist",
+  "version": "1.0.0",
+  "description": "Add a zero-cost email waitlist to any landing page using Gmail API, GCP OAuth, and Vercel serverless functions",
+  "keywords": ["waitlist", "gmail", "email", "signup", "landing-page", "vercel", "oauth", "gcp", "notifications"]
+}

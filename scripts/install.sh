@@ -6,20 +6,31 @@ REPO_DIR="$(dirname "$SCRIPT_DIR")"
 SKILL_NAME="gmail-waitlist"
 CANONICAL_DIR="$REPO_DIR/.agents/skills/$SKILL_NAME"
 
+if [[ ! -d "$CANONICAL_DIR" ]]; then
+  echo "Error: Canonical skill source not found at $CANONICAL_DIR" >&2
+  echo "Make sure you have cloned the repository first:" >&2
+  echo "  git clone https://github.com/moose-lab/awesome-workplaces-skills.git" >&2
+  exit 1
+fi
+
 usage() {
-  echo "Usage: $0 <agent>"
+  echo "Usage: $0 <agent> [target-dir]"
   echo ""
   echo "Agents:"
-  echo "  codex     Install to ~/.agents/skills/ (OpenAI Codex)"
-  echo "  cursor    Install to ~/.cursor/skills/ (Cursor)"
-  echo "  copilot   Generate AGENTS.md in current directory (GitHub Copilot / Gemini)"
+  echo "  codex     Copy skill to project .agents/skills/ (OpenAI Codex)"
+  echo "  cursor    Copy skill to project .cursor/skills/ (Cursor)"
+  echo "  copilot   Generate AGENTS.md in target directory (GitHub Copilot / Gemini)"
+  echo "  windsurf  Generate .windsurf/rules/ in target directory (Windsurf)"
   echo "  claude    Print Claude Code plugin install command"
-  echo "  all       Install to all detected agents"
+  echo "  all       Install for all agents in target directory"
+  echo ""
+  echo "  target-dir  Project directory to install into (default: current directory)"
   exit 1
 }
 
 install_codex() {
-  local target="$HOME/.agents/skills/$SKILL_NAME"
+  local project_dir="$1"
+  local target="$project_dir/.agents/skills/$SKILL_NAME"
   echo "Installing $SKILL_NAME for Codex → $target"
   rm -rf "$target"
   mkdir -p "$(dirname "$target")"
@@ -28,7 +39,8 @@ install_codex() {
 }
 
 install_cursor() {
-  local target="$HOME/.cursor/skills/$SKILL_NAME"
+  local project_dir="$1"
+  local target="$project_dir/.cursor/skills/$SKILL_NAME"
   echo "Installing $SKILL_NAME for Cursor → $target"
   rm -rf "$target"
   mkdir -p "$(dirname "$target")"
@@ -37,7 +49,8 @@ install_cursor() {
 }
 
 install_copilot() {
-  local agents_file="$PWD/AGENTS.md"
+  local project_dir="$1"
+  local agents_file="$project_dir/AGENTS.md"
   local marker="<!-- skill:$SKILL_NAME -->"
 
   if [[ -f "$agents_file" ]] && grep -q "$marker" "$agents_file"; then
@@ -45,10 +58,11 @@ install_copilot() {
     return
   fi
 
-  echo "Generating AGENTS.md reference in $PWD"
+  echo "Generating AGENTS.md reference in $project_dir"
 
+  # Strip YAML frontmatter (compatible with both BSD and GNU sed/awk)
   local skill_content
-  skill_content=$(sed '1,/^---$/{ /^---$/!d; /^---$/d; }' "$CANONICAL_DIR/SKILL.md" | sed '1,/^---$/d')
+  skill_content=$(awk 'BEGIN{n=0} /^---$/{n++;next} n>=2{print}' "$CANONICAL_DIR/SKILL.md")
 
   cat >> "$agents_file" <<EOF
 
@@ -59,8 +73,30 @@ $skill_content
 <!-- /skill:$SKILL_NAME -->
 EOF
 
-  echo "✓ AGENTS.md updated with $SKILL_NAME reference."
+  echo "✓ AGENTS.md updated with $SKILL_NAME skill content."
   echo "  GitHub Copilot and Gemini Code Assist will read this automatically."
+}
+
+install_windsurf() {
+  local project_dir="$1"
+  local rules_dir="$project_dir/.windsurf/rules"
+  local rule_file="$rules_dir/$SKILL_NAME.md"
+
+  if [[ -f "$rule_file" ]]; then
+    echo "✓ .windsurf/rules/$SKILL_NAME.md already exists — replacing."
+  fi
+
+  mkdir -p "$rules_dir"
+
+  # Strip YAML frontmatter
+  local skill_content
+  skill_content=$(awk 'BEGIN{n=0} /^---$/{n++;next} n>=2{print}' "$CANONICAL_DIR/SKILL.md")
+
+  cat > "$rule_file" <<EOF
+$skill_content
+EOF
+
+  echo "✓ Windsurf rule created at $rule_file"
 }
 
 install_claude() {
@@ -74,13 +110,16 @@ install_claude() {
 }
 
 install_all() {
-  echo "=== Installing to all detected agents ==="
+  local project_dir="$1"
+  echo "=== Installing $SKILL_NAME for all agents ==="
   echo ""
-  install_codex
+  install_codex "$project_dir"
   echo ""
-  install_cursor
+  install_cursor "$project_dir"
   echo ""
-  install_copilot
+  install_copilot "$project_dir"
+  echo ""
+  install_windsurf "$project_dir"
   echo ""
   install_claude
   echo ""
@@ -91,11 +130,21 @@ if [[ $# -lt 1 ]]; then
   usage
 fi
 
-case "$1" in
-  codex)   install_codex ;;
-  cursor)  install_cursor ;;
-  copilot) install_copilot ;;
-  claude)  install_claude ;;
-  all)     install_all ;;
-  *)       echo "Unknown agent: $1"; usage ;;
+AGENT="$1"
+TARGET_DIR="${2:-$PWD}"
+
+# Resolve to absolute path
+TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd)" || {
+  echo "Error: target directory '$2' does not exist" >&2
+  exit 1
+}
+
+case "$AGENT" in
+  codex)    install_codex "$TARGET_DIR" ;;
+  cursor)   install_cursor "$TARGET_DIR" ;;
+  copilot)  install_copilot "$TARGET_DIR" ;;
+  windsurf) install_windsurf "$TARGET_DIR" ;;
+  claude)   install_claude ;;
+  all)      install_all "$TARGET_DIR" ;;
+  *)        echo "Unknown agent: $AGENT"; usage ;;
 esac

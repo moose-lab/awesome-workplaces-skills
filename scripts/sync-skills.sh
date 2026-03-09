@@ -4,66 +4,103 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
 
-SKILL_NAME="gmail-waitlist"
-SRC="$REPO_DIR/.agents/skills/$SKILL_NAME"
-DST="$REPO_DIR/$SKILL_NAME/skills/$SKILL_NAME"
+ERRORS=0
 
-if [[ ! -d "$SRC" ]]; then
-  echo "✗ Canonical source not found: $SRC" >&2
-  exit 1
-fi
+sync_skill() {
+  local skill_name="$1"
+  local src="$REPO_DIR/.agents/skills/$skill_name"
+  local dst="$REPO_DIR/$skill_name/skills/$skill_name"
 
-echo "Syncing: $SRC → $DST"
+  if [[ ! -f "$src/SKILL.md" ]]; then
+    echo "✗ $skill_name: SKILL.md not found in canonical source" >&2
+    ERRORS=$((ERRORS + 1))
+    return
+  fi
 
-# Sync SKILL.md
-mkdir -p "$DST"
-cp "$SRC/SKILL.md" "$DST/SKILL.md"
-echo "  ✓ SKILL.md"
+  echo "Syncing: $skill_name"
 
-# Sync references/
-if [[ -d "$SRC/references" ]]; then
-  mkdir -p "$DST/references"
-  cp "$SRC/references/"*.md "$DST/references/"
-  echo "  ✓ references/"
-fi
+  # SKILL.md
+  mkdir -p "$dst"
+  cp "$src/SKILL.md" "$dst/SKILL.md"
+  echo "  ✓ SKILL.md"
 
-# Sync examples/ → gmail-waitlist/examples/
-if [[ -d "$SRC/examples" ]]; then
-  mkdir -p "$REPO_DIR/$SKILL_NAME/examples"
-  cp "$SRC/examples/"* "$REPO_DIR/$SKILL_NAME/examples/"
-  echo "  ✓ examples/"
-fi
+  # references/ → under skills/ (same level as SKILL.md)
+  if [[ -d "$src/references" ]]; then
+    mkdir -p "$dst/references"
+    cp "$src/references/"* "$dst/references/"
+    echo "  ✓ references/"
+  fi
 
-# Sync scripts/ → gmail-waitlist/scripts/
-if [[ -d "$SRC/scripts" ]]; then
-  mkdir -p "$REPO_DIR/$SKILL_NAME/scripts"
-  cp "$SRC/scripts/"* "$REPO_DIR/$SKILL_NAME/scripts/"
-  echo "  ✓ scripts/"
-fi
+  # examples/ → under skills/ (same level as SKILL.md for correct relative paths)
+  if [[ -d "$src/examples" ]]; then
+    mkdir -p "$dst/examples"
+    cp "$src/examples/"* "$dst/examples/"
+    echo "  ✓ examples/"
+  fi
 
-echo ""
-echo "✓ Sync complete. Verifying consistency..."
+  # scripts/ → under skills/ (same level as SKILL.md for correct relative paths)
+  if [[ -d "$src/scripts" ]]; then
+    mkdir -p "$dst/scripts"
+    cp "$src/scripts/"* "$dst/scripts/"
+    echo "  ✓ scripts/"
+  fi
 
-# Verify SKILL.md match
-if diff -q "$SRC/SKILL.md" "$DST/SKILL.md" > /dev/null 2>&1; then
-  echo "  ✓ SKILL.md consistent"
-else
-  echo "  ✗ SKILL.md mismatch!" >&2
-  exit 1
-fi
+  # Verify consistency
+  echo ""
+  echo "  Verifying consistency..."
 
-# Verify references/ match
-if [[ -d "$SRC/references" ]]; then
-  for f in "$SRC/references/"*.md; do
-    fname=$(basename "$f")
-    if diff -q "$f" "$DST/references/$fname" > /dev/null 2>&1; then
-      echo "  ✓ references/$fname consistent"
+  local files_to_check=("SKILL.md")
+
+  if [[ -d "$src/references" ]]; then
+    for f in "$src/references/"*; do
+      files_to_check+=("references/$(basename "$f")")
+    done
+  fi
+
+  if [[ -d "$src/examples" ]]; then
+    for f in "$src/examples/"*; do
+      files_to_check+=("examples/$(basename "$f")")
+    done
+  fi
+
+  if [[ -d "$src/scripts" ]]; then
+    for f in "$src/scripts/"*; do
+      files_to_check+=("scripts/$(basename "$f")")
+    done
+  fi
+
+  for rel in "${files_to_check[@]}"; do
+    if diff -q "$src/$rel" "$dst/$rel" > /dev/null 2>&1; then
+      echo "  ✓ $rel consistent"
     else
-      echo "  ✗ references/$fname mismatch!" >&2
-      exit 1
+      echo "  ✗ $rel mismatch!" >&2
+      ERRORS=$((ERRORS + 1))
     fi
   done
+}
+
+# Auto-detect all skills in .agents/skills/
+echo "Scanning .agents/skills/ for skills..."
+echo ""
+
+SKILL_COUNT=0
+for skill_dir in "$REPO_DIR/.agents/skills/"*/; do
+  if [[ -d "$skill_dir" ]]; then
+    skill_name=$(basename "$skill_dir")
+    sync_skill "$skill_name"
+    SKILL_COUNT=$((SKILL_COUNT + 1))
+    echo ""
+  fi
+done
+
+if [[ "$SKILL_COUNT" -eq 0 ]]; then
+  echo "No skills found in .agents/skills/" >&2
+  exit 1
 fi
 
-echo ""
-echo "✓ All files in sync."
+if [[ "$ERRORS" -gt 0 ]]; then
+  echo "✗ Sync completed with $ERRORS errors" >&2
+  exit 1
+fi
+
+echo "✓ All $SKILL_COUNT skill(s) in sync."

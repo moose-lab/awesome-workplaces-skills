@@ -15,7 +15,7 @@ Add a zero-cost email waitlist to any landing page using Gmail API, GCP OAuth, a
 | Agent | Install Method | Auto-Discovery |
 |-------|---------------|----------------|
 | Claude Code | `/plugin marketplace add` | Skill auto-triggers on matching prompts |
-| OpenAI Codex | `install.sh codex` or manual copy | `$gmail-waitlist` or implicit invocation |
+| OpenAI Codex | `install.sh codex` | `$gmail-waitlist` or implicit invocation |
 | Cursor | GitHub import or `install.sh cursor` | `/gmail-waitlist` or implicit invocation |
 | GitHub Copilot | `install.sh copilot` → generates AGENTS.md | Reads project AGENTS.md |
 | Windsurf | `install.sh windsurf` → generates rules | Reads `.windsurf/rules/` |
@@ -23,28 +23,31 @@ Add a zero-cost email waitlist to any landing page using Gmail API, GCP OAuth, a
 
 ## Installation
 
+First clone the repository:
+
+```bash
+git clone https://github.com/moose-lab/awesome-workplaces-skills.git
+cd awesome-workplaces-skills
+```
+
 ### Claude Code (recommended)
 
 ```bash
 # From the marketplace
 claude plugin add github:moose-lab/awesome-workplaces-skills
-```
 
-```bash
-# Local development
-git clone https://github.com/moose-lab/awesome-workplaces-skills.git
-claude --plugin-dir ./awesome-workplaces-skills/gmail-waitlist
+# Or local development
+claude --plugin-dir ./gmail-waitlist
 ```
 
 ### OpenAI Codex
 
 ```bash
-# One-line install
-bash <(curl -s https://raw.githubusercontent.com/moose-lab/awesome-workplaces-skills/main/scripts/install.sh) codex
+# Install into your project (copies to <project>/.agents/skills/)
+bash scripts/install.sh codex /path/to/your-project
 
-# Or manual
-git clone https://github.com/moose-lab/awesome-workplaces-skills.git
-cp -r awesome-workplaces-skills/.agents/skills/gmail-waitlist ~/.agents/skills/
+# Or manual copy
+cp -r .agents/skills/gmail-waitlist /path/to/your-project/.agents/skills/
 ```
 
 ### Cursor
@@ -53,15 +56,28 @@ cp -r awesome-workplaces-skills/.agents/skills/gmail-waitlist ~/.agents/skills/
 # Option A: Native GitHub import (recommended)
 # Settings → Skills → Import from GitHub → moose-lab/awesome-workplaces-skills
 
-# Option B: Script install
-bash scripts/install.sh cursor
+# Option B: Script install into your project
+bash scripts/install.sh cursor /path/to/your-project
 ```
 
 ### GitHub Copilot / Gemini Code Assist
 
 ```bash
-# Generates an AGENTS.md in your project that references the skill
-bash scripts/install.sh copilot
+# Generates an AGENTS.md in your project with the full skill content
+bash scripts/install.sh copilot /path/to/your-project
+```
+
+### Windsurf
+
+```bash
+# Generates .windsurf/rules/gmail-waitlist.md in your project
+bash scripts/install.sh windsurf /path/to/your-project
+```
+
+### All agents at once
+
+```bash
+bash scripts/install.sh all /path/to/your-project
 ```
 
 ## Triggering a Skill

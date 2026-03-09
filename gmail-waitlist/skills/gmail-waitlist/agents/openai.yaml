@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gmail Waitlist"
+  short_description: "Add a zero-cost Gmail-powered email waitlist"
+  default_prompt: "Use $gmail-waitlist to add a zero-cost email waitlist with Gmail notifications to my landing page."
